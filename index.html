@@ -460,7 +460,7 @@ Firefox y Safari obligan a descargar archivo por archivo por limitaciones del na
 <div class="info">
 
 ✅ Renombrado automático real<br>
-✅ Extracción inteligente igual al primer sistema<br>
+✅ Extracción inteligente optimizada (HTML limpio + PDFs)<br>
 ✅ Compatible con PDFs Andreani<br>
 ✅ Conversión HTML → PDF integrada<br>
 ✅ Guardado silencioso masivo<br>
@@ -811,8 +811,6 @@ async function processPDF(file){
     const text =
         await extractTextFromPDF(file);
 
-    // EXACTAMENTE COMO TU PRIMER SISTEMA
-
     const seguimientoMatch =
         text.match(/\b\d{15}\b/);
 
@@ -862,21 +860,26 @@ async function processHTML(file){
 
     await waitImages();
 
-    // EXTRACCIÓN EXACTA
+    // Extraemos el texto plano limpio del renderizado DOM para evitar interferencia de tags HTML
+    const textContent = renderArea.innerText || renderArea.textContent || '';
 
+    // Detección robusta de Seguimiento (números largos de 12 a 25 dígitos, p.ej. Andreani)
     const trackingMatches =
-        html.match(/\b\d{12,25}\b/g);
+        textContent.match(/\b\d{12,25}\b/g) || html.match(/\b\d{12,25}\b/g);
 
     const tracking =
         trackingMatches
         ? trackingMatches[0]
         : 'SIN_SEGUIMIENTO';
 
-    const idRegex =
-        /ID[:\s#-]*([0-9]+)/i;
-
-    const idMatch =
-        html.match(idRegex);
+    // Detección robusta de ID (busca patrones como ID:, ID -, ID#, o variantes similares en el texto plano)
+    const idRegex = /ID\s*[:#\-\s]*([0-9]+)/i;
+    let idMatch = textContent.match(idRegex);
+    
+    if(!idMatch){
+        // Fallback buscando en el HTML crudo por si acaso
+        idMatch = html.match(idRegex);
+    }
 
     const id =
         idMatch
@@ -884,7 +887,6 @@ async function processHTML(file){
         : '0000';
 
     // GENERAR PDF
-
     const canvas =
         await html2canvas(
             renderArea,
@@ -962,8 +964,6 @@ async function extractTextFromPDF(file){
 
     let text = '';
 
-    // EXACTAMENTE COMO TU SISTEMA ORIGINAL
-
     const pages =
         Math.min(pdf.numPages, 2);
 
@@ -995,9 +995,6 @@ async function saveArrayBuffer(
     filename
 ){
 
-    // CHROME / EDGE
-    // GUARDADO REAL SILENCIOSO
-
     if(fsaSupported && destDirHandle){
 
         const fileHandle =
@@ -1016,9 +1013,6 @@ async function saveArrayBuffer(
         await writable.close();
 
     }else{
-
-        // FALLBACK
-        // Firefox / Safari
 
         const blob =
             new Blob(
